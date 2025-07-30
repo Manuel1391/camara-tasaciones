@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cámara Tasaciones</title>
+<style>
+  body { margin:0; font-family:sans-serif; background:#000; color:#fff; text-align:center; }
+  #preview, #captured { max-width:100%; width:100%; background:#000; }
+  #controls { position:fixed; bottom:0; left:0; right:0; background:#000a; padding:10px; display:flex; justify-content:center; gap:10px; }
+  button { padding:12px 20px; font-size:16px; border:none; border-radius:8px; cursor:pointer; }
+  #captureBtn { background:#4caf50; color:white; }
+  #saveBtn { background:#2196f3; color:white; }
+  #retakeBtn { background:#f44336; color:white; }
+  #nameInput { font-size:16px; padding:8px; border-radius:6px; border:none; }
+</style>
+</head>
+<body>
+
+<video id="preview" autoplay playsinline></video>
+<canvas id="canvas" style="display:none;"></canvas>
+<img id="captured" style="display:none;"/>
+
+<div id="controls">
+  <button id="captureBtn">Tomar foto</button>
+  <input id="nameInput" placeholder="Nombre" style="display:none;">
+  <button id="saveBtn" style="display:none;">Guardar</button>
+  <button id="retakeBtn" style="display:none;">Repetir</button>
+</div>
+
+<script>
+const video = document.getElementById('preview');
+const canvas = document.getElementById('canvas');
+const captured = document.getElementById('captured');
+
+const captureBtn = document.getElementById('captureBtn');
+const saveBtn = document.getElementById('saveBtn');
+const retakeBtn = document.getElementById('retakeBtn');
+const nameInput = document.getElementById('nameInput');
+
+let stream;
+
+// Inicializa cámara trasera
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" }, width: 1280, height: 720 },
+      audio: false
+    });
+    video.srcObject = stream;
+  } catch (err) {
+    alert('Error al acceder a la cámara: ' + err);
+  }
+}
+
+function capturePhoto() {
+  const context = canvas.getContext('2d');
+  // Ajusta resolución de salida
+  const width = 1280;
+  const height = 720;
+  canvas.width = width;
+  canvas.height = height;
+  context.drawImage(video, 0, 0, width, height);
+  
+  const dataURL = canvas.toDataURL('image/jpeg', 0.9);
+  captured.src = dataURL;
+
+  // Cambia a vista previa de la foto
+  video.style.display = 'none';
+  captured.style.display = 'block';
+  captureBtn.style.display = 'none';
+  saveBtn.style.display = 'inline-block';
+  retakeBtn.style.display = 'inline-block';
+  nameInput.style.display = 'inline-block';
+}
+
+function savePhoto() {
+  const name = nameInput.value.trim() || "foto";
+  const link = document.createElement('a');
+  link.download = name + ".jpg";
+  link.href = captured.src;
+  link.click();
+  nameInput.value = '';
+  retakePhoto();
+}
+
+function retakePhoto() {
+  captured.style.display = 'none';
+  video.style.display = 'block';
+  captureBtn.style.display = 'inline-block';
+  saveBtn.style.display = 'none';
+  retakeBtn.style.display = 'none';
+  nameInput.style.display = 'none';
+}
+
+// Eventos
+captureBtn.addEventListener('click', capturePhoto);
+saveBtn.addEventListener('click', savePhoto);
+retakeBtn.addEventListener('click', retakePhoto);
+
+startCamera();
+</script>
+</body>
+</html>
