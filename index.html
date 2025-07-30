@@ -1,45 +1,3 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cámara Tasaciones</title>
-<style>
-  body { margin: 0; background: #000; color: #fff; font-family: sans-serif; text-align: center;}
-  video, canvas { width: 100%; max-width: 100%; }
-  #controls { padding: 10px; }
-  button {
-    padding: 12px 20px;
-    font-size: 18px;
-    margin: 5px;
-    background: #2979ff;
-    color: white;
-    border: none;
-    border-radius: 8px;
-  }
-  input[type="text"] {
-    font-size: 16px;
-    padding: 6px;
-    width: 80%;
-    margin: 10px 0;
-  }
-</style>
-</head>
-<body>
-
-<h2>Cámara Tasaciones</h2>
-<video id="video" autoplay playsinline></video>
-<canvas id="canvas" style="display:none;"></canvas>
-
-<div id="controls">
-  <button id="captureBtn">Tomar foto</button>
-  <div id="saveControls" style="display:none;">
-    <input type="text" id="filename" placeholder="Nombre de la foto">
-    <button id="saveBtn">Guardar foto</button>
-    <button id="newBtn">Nueva foto</button>
-  </div>
-</div>
-
 <script>
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
@@ -49,11 +7,29 @@ const filenameInput = document.getElementById('filename');
 const saveBtn = document.getElementById('saveBtn');
 const newBtn = document.getElementById('newBtn');
 
+const toast = document.createElement('div');
+toast.style.position = 'fixed';
+toast.style.bottom = '20px';
+toast.style.left = '50%';
+toast.style.transform = 'translateX(-50%)';
+toast.style.background = '#333';
+toast.style.color = '#fff';
+toast.style.padding = '10px 20px';
+toast.style.borderRadius = '8px';
+toast.style.display = 'none';
+document.body.appendChild(toast);
+
+function showToast(message) {
+  toast.textContent = message;
+  toast.style.display = 'block';
+  setTimeout(() => toast.style.display = 'none', 2000);
+}
+
 // Inicia cámara trasera
 async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { exact: "environment" } }, // cámara trasera
+      video: { facingMode: { exact: "environment" } },
       audio: false
     });
     video.srcObject = stream;
@@ -62,12 +38,31 @@ async function startCamera() {
   }
 }
 
-captureBtn.onclick = () => {
-  // Congelar imagen
+function drawRotatedImage() {
   const ctx = canvas.getContext('2d');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  ctx.drawImage(video, 0, 0);
+
+  const w = video.videoWidth;
+  const h = video.videoHeight;
+  const isLandscape = window.innerWidth > window.innerHeight;
+
+  if (isLandscape) {
+    // Ajusta canvas para apaisado
+    canvas.width = h;
+    canvas.height = w;
+    ctx.save();
+    ctx.translate(h / 2, w / 2);
+    ctx.rotate(-90 * Math.PI / 180);
+    ctx.drawImage(video, -w / 2, -h / 2);
+    ctx.restore();
+  } else {
+    canvas.width = w;
+    canvas.height = h;
+    ctx.drawImage(video, 0, 0);
+  }
+}
+
+captureBtn.onclick = () => {
+  drawRotatedImage();
   video.style.display = 'none';
   canvas.style.display = 'block';
   captureBtn.style.display = 'none';
@@ -80,6 +75,7 @@ saveBtn.onclick = () => {
   link.download = name + '.png';
   link.href = canvas.toDataURL('image/png');
   link.click();
+  showToast('Foto guardada');
 };
 
 newBtn.onclick = () => {
@@ -92,5 +88,3 @@ newBtn.onclick = () => {
 
 startCamera();
 </script>
-</body>
-</html>
