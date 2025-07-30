@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cámara Tasaciones</title>
+<style>
+  body { margin: 0; background: #000; color: #fff; font-family: sans-serif; text-align: center;}
+  video, canvas { width: 100%; max-width: 100%; }
+  #controls { padding: 10px; }
+  button {
+    padding: 12px 20px;
+    font-size: 18px;
+    margin: 5px;
+    background: #2979ff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+  }
+  input[type="text"] {
+    font-size: 16px;
+    padding: 6px;
+    width: 80%;
+    margin: 10px 0;
+  }
+</style>
+</head>
+<body>
+
+<h2>Cámara Tasaciones</h2>
+<video id="video" autoplay playsinline></video>
+<canvas id="canvas" style="display:none;"></canvas>
+
+<div id="controls">
+  <button id="captureBtn">Tomar foto</button>
+  <div id="saveControls" style="display:none;">
+    <input type="text" id="filename" placeholder="Nombre de la foto">
+    <button id="saveBtn">Guardar foto</button>
+    <button id="newBtn">Nueva foto</button>
+  </div>
+</div>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const captureBtn = document.getElementById('captureBtn');
+const saveControls = document.getElementById('saveControls');
+const filenameInput = document.getElementById('filename');
+const saveBtn = document.getElementById('saveBtn');
+const newBtn = document.getElementById('newBtn');
+
+// Inicia cámara trasera
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { exact: "environment" } }, // cámara trasera
+      audio: false
+    });
+    video.srcObject = stream;
+  } catch (err) {
+    alert("No se pudo acceder a la cámara: " + err);
+  }
+}
+
+captureBtn.onclick = () => {
+  // Congelar imagen
+  const ctx = canvas.getContext('2d');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0);
+  video.style.display = 'none';
+  canvas.style.display = 'block';
+  captureBtn.style.display = 'none';
+  saveControls.style.display = 'block';
+};
+
+saveBtn.onclick = () => {
+  const name = filenameInput.value.trim() || 'foto';
+  const link = document.createElement('a');
+  link.download = name + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+};
+
+newBtn.onclick = () => {
+  video.style.display = 'block';
+  canvas.style.display = 'none';
+  captureBtn.style.display = 'inline-block';
+  saveControls.style.display = 'none';
+  filenameInput.value = '';
+};
+
+startCamera();
+</script>
+</body>
+</html>
