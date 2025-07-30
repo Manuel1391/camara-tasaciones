@@ -3,118 +3,134 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cámara Tasación</title>
+<title>Cámara Tasaciones</title>
 <style>
-  body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #000;
-    color: #fff;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    height: 100vh;
-  }
-  video {
-    width: 100%;
-    max-height: 70vh;
-    object-fit: cover;
-    background: #000;
-  }
-  #controls {
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    background: #111;
-  }
-  #photoName {
-    width: 90%;
-    padding: 8px;
-    margin-bottom: 10px;
-    font-size: 16px;
-  }
+  body { margin: 0; background: #000; color: #fff; font-family: sans-serif; text-align: center;}
+  video, canvas { width: 100%; max-width: 100%; }
+  #controls { padding: 10px; }
   button {
-    padding: 10px 20px;
+    padding: 12px 20px;
     font-size: 18px;
+    margin: 5px;
     background: #2979ff;
+    color: white;
     border: none;
     border-radius: 8px;
-    color: white;
-    cursor: pointer;
   }
-  button:hover { background: #5393ff; }
+  input[type="text"], select {
+    font-size: 16px;
+    padding: 6px;
+    width: 80%;
+    margin: 10px 0;
+  }
   #msg {
-    margin-top: 10px;
     color: #0f0;
     font-weight: bold;
+    margin-top: 10px;
   }
 </style>
 </head>
 <body>
 
+<h2>Cámara Tasaciones</h2>
 <video id="video" autoplay playsinline></video>
-
-<div id="controls">
-  <input type="text" id="photoName" placeholder="Nombre de la foto">
-  <button id="captureBtn">Capturar foto</button>
-  <div id="msg"></div>
-</div>
-
 <canvas id="canvas" style="display:none;"></canvas>
 
-<script>
-async function startCamera() {
-  const constraints = {
-    video: {
-      facingMode: { ideal: "environment" }, // trasera
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
-    },
-    audio: false
-  };
+<div id="controls">
+  <button id="captureBtn">Tomar foto</button>
 
+  <div id="saveControls" style="display:none;">
+    <input type="text" id="filename" placeholder="Nombre de la foto"><br>
+    <label>Orientación:</label>
+    <select id="orientation">
+      <option value="auto">Auto</option>
+      <option value="landscape">Horizontal</option>
+      <option value="portrait">Vertical</option>
+    </select><br>
+    <button id="saveBtn">Guardar foto</button>
+    <button id="newBtn">Nueva foto</button>
+    <div id="msg"></div>
+  </div>
+</div>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const captureBtn = document.getElementById('captureBtn');
+const saveControls = document.getElementById('saveControls');
+const filenameInput = document.getElementById('filename');
+const saveBtn = document.getElementById('saveBtn');
+const newBtn = document.getElementById('newBtn');
+const orientationSelect = document.getElementById('orientation');
+const msg = document.getElementById('msg');
+
+// Inicia cámara trasera
+async function startCamera() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    const video = document.getElementById('video');
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { exact: "environment" } },
+      audio: false
+    });
     video.srcObject = stream;
-    await video.play();
   } catch (err) {
-    alert("No se pudo acceder a la cámara: " + err.message);
+    alert("No se pudo acceder a la cámara: " + err);
   }
 }
 
-function showMessage(text) {
-  const msg = document.getElementById('msg');
-  msg.textContent = text;
-  setTimeout(() => msg.textContent = "", 2000);
-}
-
-document.getElementById('captureBtn').addEventListener('click', () => {
-  const video = document.getElementById('video');
-  const canvas = document.getElementById('canvas');
-  const name = document.getElementById('photoName').value.trim() || "foto";
-
-  // Ajustar tamaño
+captureBtn.onclick = () => {
+  // Congelar imagen
+  const ctx = canvas.getContext('2d');
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0);
+  video.style.display = 'none';
+  canvas.style.display = 'block';
+  captureBtn.style.display = 'none';
+  saveControls.style.display = 'block';
+};
 
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+saveBtn.onclick = () => {
+  const name = filenameInput.value.trim() || 'foto';
+  const orientation = orientationSelect.value;
 
-  // Convertir a imagen
-  canvas.toBlob(blob => {
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = name + ".jpg";
-    link.click();
-    showMessage("Foto guardada");
-  }, 'image/jpeg', 0.95);
-});
+  // Redibujar según orientación seleccionada
+  let finalCanvas = document.createElement('canvas');
+  let ctx = finalCanvas.getContext('2d');
+
+  if (orientation === 'portrait' && canvas.width > canvas.height) {
+    finalCanvas.width = canvas.height;
+    finalCanvas.height = canvas.width;
+    ctx.translate(finalCanvas.width / 2, finalCanvas.height / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
+  } else if (orientation === 'landscape' && canvas.height > canvas.width) {
+    finalCanvas.width = canvas.height;
+    finalCanvas.height = canvas.width;
+    ctx.translate(finalCanvas.width / 2, finalCanvas.height / 2);
+    ctx.rotate(Math.PI / 2);
+    ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
+  } else {
+    finalCanvas = canvas; // sin cambios
+  }
+
+  const link = document.createElement('a');
+  link.download = name + '.png';
+  link.href = finalCanvas.toDataURL('image/png');
+  link.click();
+
+  msg.textContent = "Foto guardada";
+  setTimeout(() => msg.textContent = "", 2000);
+};
+
+newBtn.onclick = () => {
+  video.style.display = 'block';
+  canvas.style.display = 'none';
+  captureBtn.style.display = 'inline-block';
+  saveControls.style.display = 'none';
+  filenameInput.value = '';
+};
 
 startCamera();
 </script>
-
 </body>
 </html>
